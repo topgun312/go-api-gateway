@@ -1,3 +1,5 @@
+// Package storage реализует хранилища приложения: PostgreSQL (пользователи)
+// и клиент Redis для rate limit.
 package storage
 
 import (
@@ -8,10 +10,13 @@ import (
 	"go-api-gateway/internal/models"
 )
 
+// Store — хранилище пользователей в PostgreSQL.
 type Store struct {
 	db *sql.DB
 }
 
+// NewStore открывает пул соединений с PostgreSQL по DSN и проверяет
+// доступность базы (Ping). Возвращает ошибку, если подключиться нельзя.
 func NewStore(dsn string) (*Store, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -23,6 +28,8 @@ func NewStore(dsn string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
+// GetUserByAPIKey возвращает пользователя по API-ключу.
+// Если ключ не найден, возвращает (nil, nil) — без ошибки.
 func (s *Store) GetUserByAPIKey(ctx context.Context, key string) (*models.User, error) {
 	var u models.User
 	err := s.db.QueryRowContext(ctx,
@@ -37,6 +44,7 @@ func (s *Store) GetUserByAPIKey(ctx context.Context, key string) (*models.User, 
 	return &u, nil
 }
 
+// Close закрывает пул соединений с базой данных.
 func (s *Store) Close() error {
 	return s.db.Close()
 }

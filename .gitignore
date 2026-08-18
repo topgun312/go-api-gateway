@@ -1,0 +1,13 @@
+# Environment
+.env
+
+# Go build artifacts
+/gateway
+/bin/
+*.exe
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
