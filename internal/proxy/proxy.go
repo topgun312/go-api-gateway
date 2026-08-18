@@ -1,3 +1,4 @@
+// Package proxy проксирует HTTP-запросы клиента в Ollama.
 package proxy
 
 import (
@@ -7,11 +8,14 @@ import (
 	"time"
 )
 
+// OllamaProxy — HTTP-клиент, пересылающий запросы в Ollama.
 type OllamaProxy struct {
 	targetURL string
 	client    *http.Client
 }
 
+// NewOllamaProxy создаёт прокси до targetURL (например,
+// http://localhost:11434/api/generate) с таймаутом запроса 60 секунд.
 func NewOllamaProxy(targetURL string) *OllamaProxy {
 	return &OllamaProxy{
 		targetURL: targetURL,
@@ -19,6 +23,8 @@ func NewOllamaProxy(targetURL string) *OllamaProxy {
 	}
 }
 
+// Proxy читает тело запроса r и отправляет POST на targetURL,
+// пробрасывая статус и тело ответа Ollama клиенту как есть.
 func (p *OllamaProxy) Proxy(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

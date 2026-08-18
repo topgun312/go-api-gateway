@@ -1,3 +1,4 @@
+// Package handlers содержит HTTP-обработчик API-шлюза.
 package handlers
 
 import (
@@ -23,16 +24,21 @@ type RequestProxy interface {
 	Proxy(w http.ResponseWriter, r *http.Request)
 }
 
+// Gateway — основной HTTP-обработчик API-шлюза.
+// Цепочка обработки запроса: auth → rate limit → proxy.
 type Gateway struct {
 	store   UserStore
 	limiter ratelimit.Limiter
 	proxy   RequestProxy
 }
 
+// NewGateway собирает шлюз из хранилища пользователей, лимитера и прокси.
 func NewGateway(store UserStore, limiter ratelimit.Limiter, p RequestProxy) *Gateway {
 	return &Gateway{store: store, limiter: limiter, proxy: p}
 }
 
+// ServeHTTP реализует http.Handler: проверяет API-ключ, применяет
+// rate limit и проксирует запрос в Ollama.
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

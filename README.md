@@ -124,6 +124,19 @@ go run ./cmd/gateaway
 > Внутри docker-compose адреса автоматически указывают на сервисы
 > (`postgres`, `redis`, `ollama`) — см. `environment` сервиса `app`.
 
+### Переменные через `.env`
+
+Для локальной разработки значения можно вынести в файл `.env` (уже в
+`.gitignore`):
+
+```bash
+cp .env.example .env   # затем отредактируй под себя
+```
+
+Docker Compose автоматически подхватит `.env` для `${VAR}`-подстановки, а
+`config.go` при локальном `go run` загружает его через `godotenv`. Секреты
+(пароль Postgres, DSN) в git не попадут.
+
 ## Примеры запросов
 
 Валидный запрос:
@@ -144,9 +157,24 @@ curl -i http://localhost:8080/api/generate -H "Authorization: Bearer bad-key" \
 
 > Лимит — 5 запросов в минуту на ключ. При превышении → `429` с заголовками
 > `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After: 60`.
-> Учти: Ollama отвечает ~6 секунд на запрос, поэтому в curl-тесте 6 запросов
-> растягиваются через границу минуты — чтобы увидеть 429 вживую, гони запросы
-> в один и тот же календарный промежуток или используй `go test`.
+
+Проверка лимита — 7 запросов подряд (6-й и 7-й должны вернуть `429`):
+
+```bash
+for i in $(seq 1 7); do
+  code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/generate \
+    -H "Authorization: Bearer test-key-123" \
+    -H "Content-Type: application/json" \
+    -d '{"model":"llama3.2","prompt":"test","stream":false}')
+  echo "request $i -> $code"
+done
+# ожидаемый вывод: request 1-5 -> 200, request 6-7 -> 429
+```
+
+> Учти: Ollama отвечает ~6 секунд на запрос, поэтому в curl-цикле 6 запросов
+> могут растянуться через границу минуты, и 429 не выпадет (fixed window).
+> Чтобы гарантированно увидеть `429`, гони запросы в один календарный
+> промежуток или используй `go test` (см. раздел «Тестирование»).
 
 ## Тестирование
 
@@ -196,6 +224,30 @@ go vet ./...        # статический анализ
 gofmt -l .          # форматирование (пустой вывод = ок)
 golangci-lint run ./...   # 30+ линтеров (errcheck, govet, ...)
 staticcheck ./...   # статический анализ от Dominikh
+```
+
+## Документация кода (godoc)
+
+Все экспортируемые пакеты, типы и функции снабжены godoc-комментариями
+(`// Package ...`, `// Name ...` перед объявлением). Просмотреть документацию:
+
+```bash
+# по пакету
+go doc ./internal/ratelimit
+
+# по конкретному элементу
+go doc ./internal/config.Config
+go doc ./internal/ratelimit.RedisLimiter.Allow
+
+# полный список экспорта пакета
+go doc -all ./internal/storage
+```
+
+Локальный веб-браузер с документацией (опционально):
+
+```bash
+go install golang.org/x/tools/cmd/godoc@latest
+godoc -http=:6060   # открыть http://localhost:6060/pkg/go-api-gateway/
 ```
 
 ## Схема БД
